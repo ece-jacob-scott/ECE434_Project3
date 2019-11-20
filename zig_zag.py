@@ -15,3 +15,8 @@ def zig_zag(image):
         for j in i:
             arr.append(j)
     return arr
+
+
+# TODO: implement unzig_zag function
+def unzig_zag(arr):
+    raise NotImplementedError()

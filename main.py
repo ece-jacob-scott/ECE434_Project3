@@ -26,6 +26,7 @@ Q_FACTOR = 1
 image = Image.open(os.path.join(IMAGE_FOLDER, "house.tiff"))
 # Conver PIL image to cv2
 image = np.array(image)
+[image_height, image_width, *_] = image.shape
 # For some reason the image is not in the right format
 # source: https://tinyurl.com/sdjjjf5
 image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
@@ -68,19 +69,49 @@ image_Cb_dct = sudo_blockproc(image_Cb, dct2)
 # Quantize dct values
 
 
-def quantize(q_mat, q_factor):
+def quantize(q_mat, q_factor=1):
     # create a quantize function that can be sent
     # to sudo_blockproc
-    # TODO: fix this division
+    # TODO: add q factor support
     def _helper_(mat):
-        return floor(mat / (q_mat + q_factor))
+        return np.round(mat / q_mat)
     return _helper_
 
 
 image_Y_dct = sudo_blockproc(image_Y_dct, quantize(Q_MATRIX, Q_FACTOR))
-
+image_Cr_dct = sudo_blockproc(image_Cr_dct, quantize(Q_MATRIX, Q_FACTOR))
+image_Cb_dct = sudo_blockproc(image_Cb_dct, quantize(Q_MATRIX, Q_FACTOR))
 
 # Turn in to 1-D array for huffman coding
 image_Y_dct_zz = zig_zag(image_Y_dct)
 image_Cr_dct_zz = zig_zag(image_Cr_dct)
 image_Cb_dct_zz = zig_zag(image_Cr_dct)
+
+# Do Huffman Coding
+
+# Unzig zag the 1-D array
+
+# Run idct on all (8 8) blocks
+image_Y_idct = sudo_blockproc(image_Y_dct, idct2)
+image_Cr_idct = sudo_blockproc(image_Cr_dct, idct2)
+image_Cb_idct = sudo_blockproc(image_Cb_dct, idct2)
+
+# Converting to displayable format
+image_Y_idct = np.array(np.round(image_Y_idct), dtype=np.uint8)
+image_Cr_idct = np.array(np.round(image_Cr_idct), dtype=np.uint8)
+image_Cb_idct = np.array(np.round(image_Cb_idct), dtype=np.uint8)
+
+# cv.imshow("Image IDCT", image_Y_idct)
+# cv.imshow("Image DCT", image_Y)
+# cv.waitKey(0)
+
+# Combine Y Cr Cb
+combine_image = np.zeros((image_height, image_width, 3), "uint8")
+combine_image[..., 0] = image_Y_idct
+combine_image[..., 1] = image_Cr_idct
+combine_image[..., 2] = image_Cb_idct
+combine_image = np.array(combine_image)
+combine_image = cv.cvtColor(combine_image, cv.COLOR_YCR_CB2RGB)
+
+cv.imshow("Combine Image", combine_image)
+cv.waitKey(0)
